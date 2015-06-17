@@ -112,7 +112,7 @@ class LoadFile(object):
 
                     # test for special characters
                     if [u for u in candidate \
-                        if not re.search(u'(?u)^[a-zA-Z0-9\s\-\.\/]+$',
+                        if not re.search(u'(?u)^[a-zA-Z0-9\s\-]+$',
                                          sentence.words[u]) ]:
                         break
 

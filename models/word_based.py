@@ -53,6 +53,32 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
         return self.normalize(nx.pagerank_scipy(G))
 
 
+    def tfidf_word_scoring(self, idf):
+        """Scores the words using tf-idf.
+
+        Args:
+            idf (dict): the word idf scores.
+
+        """
+        scores = defaultdict(float)
+
+        # loop through the sentences to build the graph
+        for i, sentence in enumerate(self.sentences):
+            for words, offset in sentence.candidates:
+                for w in words:
+                    scores[w] += 1
+
+        max_idf = max(idf.values())
+        for w in scores:
+            if idf.has_key(w):
+                scores[w] *= idf[w]
+            else:
+                scores[w] *= max_idf
+
+        # return the random walk scores
+        return self.normalize(scores)
+
+
     def rank_candidates_with_sum(self,
                                  scores, 
                                  use_norm=False, 
@@ -95,6 +121,7 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
 
     def normalize(self, scores):
         """Normalize scores."""
+
         min_v = min(scores.values())
         max_v = max(scores.values())
         for w in scores:
@@ -104,7 +131,7 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
 
     def rank_candidates_with_ilp(self,
                                  scores,
-                                 regularization=0.05,
+                                 reg=0.05,
                                  L=10):
         """Rank the candidate keyphrases using the ILP model.
 
@@ -116,19 +143,28 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
         m = len(words)
         
         candidates = {}
-        # f = defaultdict(int)
         for sentence in self.sentences:
             for candidate, offset in sentence.candidates:
                 candidates[' '.join(candidate)] = candidate
-                # f[' '.join(candidate)] += 1
 
         candidates = candidates.values()
         n = len(candidates)
-        
+
+        # Compute candidate cohesion
+        cl = []
+        for j in range(n):
+            cl.append(0)
+            for sentence in self.sentences:
+                for candidate, offset in sentence.candidates:
+                    if re.search('(^|\s)'+' '.join(candidates[j])+'(\s|$)', 
+                                 ' '.join(candidate))\
+                        and candidates[j] != candidate :
+                        cl[-1] += 1
+
         # mu = sum([len(candidates[j]) for j in range(n)])
         # mu /= float(len(candidates))
         mu = 1.0
-        p = [(len(candidates[j])-mu) for j in range(n)]
+        p = [(len(candidates[j])-mu)*(1.0/(1.0+cl[j])) for j in range(n)]
 
         # formulation of the ILP problem 
         prob = pulp.LpProblem(self.input_file, pulp.LpMaximize)
@@ -148,8 +184,9 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
                                   cat='Integer')
 
         # OBJECTIVE FUNCTION
-        prob += sum([w[words[i]]*x[i] for i in range(m)])\
-                - regularization*sum([p[j]*c[j] for j in range(n)])
+        prob += sum([w[words[i]]*x[i] for i in range(m)]) \
+                 - reg*sum([p[j]*c[j] for j in range(n)])
+                
 
         # CONSTRAINT FOR KEYPHRASE SET SIZE
         prob += sum([ c[j] for j in range(n) ]) <= L
