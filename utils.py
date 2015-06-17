@@ -74,6 +74,7 @@ class LoadFile(object):
 
         Load the input file and populate the sentence list. Input file is 
         expected to be in one tokenized, POStagged sentence per line format.
+
         """
         with codecs.open(self.input_file, 'r', 'utf-8') as f:
             for line in f:
@@ -142,6 +143,37 @@ class LoadFile(object):
                 candidate = []
 
             offset += sentence.length
+
+
+    def featurize(self, idfs):
+        """Extract the features from the word in the keyphrase candidates.
+
+        Args:
+            idfs (dict): the word idf weights.
+
+        """
+        instances = {}
+        default_idf = max(idfs.values())
+
+        for i, sentence in enumerate(self.sentences):
+            for candidate, offset in sentence.candidates:
+                for j, word in  enumerate(candidate):
+                    if not instances.has_key(word):
+                        instances[word] = {'first-occ': offset+j, 
+                                           'tf': 1,
+                                           'idf': default_idf,
+                                           'first-sent': 0} 
+                        if idfs.has_key(word):
+                            instances[word]['idf'] = idfs[word]
+                        if i == 0:
+                            instances[word]['first-sent'] = 1
+                            print word
+
+                    else:
+                        instances[word]['tf'] += 1
+        
+        return instances
+
 
                     
 
