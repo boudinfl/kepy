@@ -167,8 +167,6 @@ class LoadFile(object):
                             instances[word]['idf'] = idfs[word]
                         if i == 0:
                             instances[word]['first-sent'] = 1
-                            print word
-
                     else:
                         instances[word]['tf'] += 1
         

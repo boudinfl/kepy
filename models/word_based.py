@@ -77,7 +77,7 @@ class WordBasedILPKeyphraseExtractor(utils.LoadFile):
 
         # return the random walk scores
         return self.normalize(scores)
-
+        
 
     def rank_candidates_with_sum(self,
                                  scores, 
