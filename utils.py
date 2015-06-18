@@ -154,12 +154,13 @@ class LoadFile(object):
         """
         instances = {}
         default_idf = max(idfs.values())
+        max_offset = float(sum([s.length for s in self.sentences]))
 
         for i, sentence in enumerate(self.sentences):
             for candidate, offset in sentence.candidates:
                 for j, word in  enumerate(candidate):
                     if not instances.has_key(word):
-                        instances[word] = {'first-occ': offset+j, 
+                        instances[word] = {'first-occ': (offset+j)/max_offset, 
                                            'tf': 1,
                                            'idf': default_idf,
                                            'first-sent': 0} 
@@ -169,7 +170,7 @@ class LoadFile(object):
                             instances[word]['first-sent'] = 1
                     else:
                         instances[word]['tf'] += 1
-        
+
         return instances
 
 
